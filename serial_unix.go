@@ -54,7 +54,14 @@ func (port *unixPort) Close() error {
 	return nil
 }
 
-func (port *unixPort) Read(p []byte) (int, error) {
+func (port *unixPort) Read(ctx context.Context, p []byte) (int, error) {
+	// Set timeout to one second if using nil context
+	if ctx == nil {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+	}
+
 	port.closeLock.RLock()
 	defer port.closeLock.RUnlock()
 	if atomic.LoadUint32(&port.opened) != 1 {
@@ -63,6 +70,12 @@ func (port *unixPort) Read(p []byte) (int, error) {
 
 	fds := unixutils.NewFDSet(port.handle, port.closeSignal.ReadFD())
 	for {
+		// Check if context is expired
+		select {
+		case <- ctx.Done():
+			return 0, nil
+		}
+
 		res, err := unixutils.Select(fds, nil, fds, -1)
 		if err == unix.EINTR {
 			continue

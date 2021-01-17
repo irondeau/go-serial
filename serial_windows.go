@@ -18,8 +18,10 @@ package serial
 */
 
 import (
-	"syscall"
+	"context"
 	"sync"
+	"syscall"
+	"time"
 )
 
 type windowsPort struct {
@@ -73,7 +75,14 @@ func (port *windowsPort) Close() error {
 	return syscall.CloseHandle(port.handle)
 }
 
-func (port *windowsPort) Read(p []byte) (int, error) {
+func (port *windowsPort) Read(ctx context.Context, p []byte) (int, error) {
+	// Set timeout to one second if using nil context
+	if ctx == nil {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+	}
+
 	var readed uint32
 	ev, err := createOverlappedEvent()
 	if err != nil {
@@ -81,6 +90,12 @@ func (port *windowsPort) Read(p []byte) (int, error) {
 	}
 	defer syscall.CloseHandle(ev.HEvent)
 	for {
+		// Check if context is expired
+		select {
+		case <- ctx.Done():
+			return 0, nil
+		}
+
 		err := syscall.ReadFile(port.handle, p, &readed, ev)
 		switch err {
 		case nil:
