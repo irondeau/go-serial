@@ -18,9 +18,16 @@ type Port interface {
 	// Stores data received from the serial port into the provided byte array
 	// buffer. The function returns the number of bytes read.
 	//
-	// If the Read function receives a nil context, it will default to a one
+	// The Read function blocks until (at least) one byte is received from
+	// the serial port or an error occurs.
+	Read(p []byte) (n int, err error)
+
+	// Stores data received from the serial port into the provided byte array
+	// buffer. The function returns the number of bytes read.
+	//
+	// If the ReadWithContext function receives a nil context, it will default to a one
 	// second timeout.
-	Read(ctx context.Context, p []byte) (n int, err error)
+	ReadWithContext(ctx context.Context, p []byte) (n int, err error)
 
 	// Send the content of the data byte array to the serial port.
 	// Returns the number of bytes written.
