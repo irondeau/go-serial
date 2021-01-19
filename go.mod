@@ -1,6 +1,6 @@
 module github.com/irondeau/go-serial
 
-go 1.13
+go 1.15
 
 require (
 	github.com/creack/goselect v0.1.1
